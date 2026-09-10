@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Camera Bot - يلتقط صورة ويرسلها على تلغرام
+"""
+import os
+import cv2
+import requests
+import datetime
+
+# ============================================================
+# الإعدادات
+# ============================================================
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8747240774:AAGZbAx1rPOIVYnko2cvWyCSBc0DW-bJXI0")
+CHAT_ID = os.getenv("CHAT_ID", "8977766960")
+SAVE_DIR = "captures"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+# ============================================================
+# التقاط الصورة
+# ============================================================
+def capture():
+    cam = cv2.VideoCapture(0)
+    if not cam.isOpened():
+        print("❌ الكاميرا غير متاحة")
+        return None
+
+    for _ in range(5):
+        cam.read()
+
+    ret, frame = cam.read()
+    cam.release()
+
+    if not ret:
+        print("❌ فشل التقاط الصورة")
+        return None
+
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = os.path.join(SAVE_DIR, f"{ts}.jpg")
+    cv2.imwrite(path, frame)
+    print(f"✅ تم التقاط الصورة: {path}")
+    return path
+
+# ============================================================
+# إرسال الصورة إلى تلغرام
+# ============================================================
+def send_photo(path):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    caption = (
+        f"🔐 تسجيل دخول جديد\n"
+        f"🕒 {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    try:
+        with open(path, "rb") as f:
+            r = requests.post(
+                url,
+                files={"photo": f},
+                data={"chat_id": CHAT_ID, "caption": caption},
+                timeout=30
+            )
+        if r.status_code == 200:
+            print("✅ تم إرسال الصورة على تلغرام")
+        else:
+            print(f"❌ خطأ: {r.text}")
+    except Exception as e:
+        print(f"❌ استثناء: {e}")
+
+# ============================================================
+# التشغيل
+# ============================================================
+if __name__ == "__main__":
+    path = capture()
+    if path:
+        send_photo(path)
